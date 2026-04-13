@@ -130,8 +130,19 @@ def approve_post(target, user, workspace, comment=""):
     ``pending_client`` (the same behaviour as before, just per-target).
     """
     post, targets, is_bundled = _resolve_targets(
-        target, eligible_from_states={"pending_review", "pending_client", "draft", "rejected", "changes_requested"}
+        target, eligible_from_states={"submitted", "pending_review", "pending_client"}
     )
+
+    if not targets:
+        logger.warning(
+            "Rejected approval attempt - no posts in approvable state",
+            extra={
+                "post_id": str(post.id),
+                "user_id": str(user.id),
+                "workspace_id": str(workspace.id),
+            },
+        )
+        raise ValueError("No posts in approvable state. Posts must be submitted for review first.")
 
     two_stage = workspace.approval_workflow_mode == "required_internal_and_client"
     moved = []

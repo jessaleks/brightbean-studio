@@ -315,18 +315,18 @@ def add_comment(request, workspace_id, post_id):
 @require_POST
 def edit_comment(request, workspace_id, post_id, comment_id):
     """Edit a comment."""
-    _get_workspace(request, workspace_id)
+    workspace = _get_workspace(request, workspace_id)
+    post = get_object_or_404(Post, id=post_id, workspace=workspace)
     body = request.POST.get("body", "").strip()
 
     if not body:
         return HttpResponse("Comment body is required.", status=400)
 
     try:
-        comment_service.update_comment(comment_id, request.user, body)
+        comment_service.update_comment(comment_id, request.user, workspace, post, body)
     except (ValueError, PermissionError) as e:
         return HttpResponse(str(e), status=400 if isinstance(e, ValueError) else 403)
 
-    post = get_object_or_404(Post, id=post_id)
     comments = comment_service.get_comments_for_post(post, request.user)
     return render(
         request,
@@ -345,13 +345,13 @@ def edit_comment(request, workspace_id, post_id, comment_id):
 def delete_comment(request, workspace_id, post_id, comment_id):
     """Soft-delete a comment."""
     workspace = _get_workspace(request, workspace_id)
+    post = get_object_or_404(Post, id=post_id, workspace=workspace)
 
     try:
-        comment_service.delete_comment(comment_id, request.user, workspace)
+        comment_service.delete_comment(comment_id, request.user, workspace, post)
     except (ValueError, PermissionError) as e:
         return HttpResponse(str(e), status=400 if isinstance(e, ValueError) else 403)
 
-    post = get_object_or_404(Post, id=post_id, workspace=workspace)
     comments = comment_service.get_comments_for_post(post, request.user)
     return render(
         request,

@@ -118,8 +118,24 @@ def portal_approve(request, post_id):
     """Approve a post from the client portal."""
     workspace = request.portal_workspace
     post = get_object_or_404(Post, id=post_id, workspace=workspace)
-    if not post.platform_posts.filter(status="pending_client").exists():
+
+    children = list(post.platform_posts.all())
+    if not children:
         raise Http404
+
+    pending_children = [pp for pp in children if pp.status == "pending_client"]
+    non_pending = [pp for pp in children if pp.status != "pending_client"]
+
+    if not pending_children:
+        raise Http404
+
+    if non_pending:
+        return HttpResponse(
+            f"Cannot approve: {len(non_pending)} platform post(s) still in progress. "
+            f"Only posts awaiting client approval can be approved.",
+            status=400,
+        )
+
     comment_text = request.POST.get("comment", "")
 
     try:
