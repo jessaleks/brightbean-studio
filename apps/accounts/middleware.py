@@ -75,12 +75,11 @@ class AuthRateLimitMiddleware:
             return remote_addr
 
         trusted_proxy_ips = getattr(settings, "TRUSTED_PROXY_IPS", None)
-        if trusted_proxy_ips is None:
+        if not trusted_proxy_ips:
+            return remote_addr
+
+        if remote_addr not in trusted_proxy_ips:
             return remote_addr
 
         client_ip = x_forwarded_for.split(",")[0].strip()
-
-        if remote_addr in trusted_proxy_ips:
-            return client_ip
-
-        return remote_addr
+        return client_ip

@@ -69,12 +69,11 @@ def update_comment(comment_id, user, workspace, post, body):
     """Update a comment's body. Only the author can edit. Must verify workspace and post scope."""
     comment = PostComment.objects.filter(
         id=comment_id,
-        workspace=workspace,
         post=post,
         deleted_at__isnull=True,
     ).first()
 
-    if not comment:
+    if not comment or comment.post.workspace_id != workspace.id:
         logger.warning(
             "Rejected comment update - comment not found in workspace/post",
             extra={
@@ -97,12 +96,11 @@ def delete_comment(comment_id, user, workspace, post):
     """Soft-delete a comment. Authors and managers can delete. Must verify workspace and post scope."""
     comment = PostComment.objects.filter(
         id=comment_id,
-        workspace=workspace,
         post=post,
         deleted_at__isnull=True,
     ).first()
 
-    if not comment:
+    if not comment or comment.post.workspace_id != workspace.id:
         logger.warning(
             "Rejected comment delete - comment not found in workspace/post",
             extra={

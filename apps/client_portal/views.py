@@ -117,22 +117,15 @@ def portal_approval_queue(request):
 def portal_approve(request, post_id):
     """Approve a post from the client portal."""
     workspace = request.portal_workspace
-    post = get_object_or_404(Post.objects.prefetch_related("platform_posts"), id=post_id, workspace=workspace)
+    post = get_object_or_404(Post.objects.select_related("author"), id=post_id, workspace=workspace)
 
-    children = list(post.platform_posts.all())
-    if not children:
+    if not post.platform_posts.filter(status="pending_client").exists():
         raise Http404
 
-    pending_children = [pp for pp in children if pp.status == "pending_client"]
-    non_pending = [pp for pp in children if pp.status != "pending_client"]
-
-    if not pending_children:
-        raise Http404
-
-    if non_pending:
+    if post.platform_posts.exclude(status="pending_client").exists():
         return HttpResponse(
-            f"Cannot approve: {len(non_pending)} platform post(s) still in progress. "
-            f"Only posts awaiting client approval can be approved.",
+            "Cannot approve: other platform post(s) still in progress. "
+            "Only posts awaiting client approval can be approved.",
             status=400,
         )
 
