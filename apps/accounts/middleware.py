@@ -79,9 +79,8 @@ class AuthRateLimitMiddleware:
             return remote_addr
 
         client_ip = x_forwarded_for.split(",")[0].strip()
-        proxy_ip = x_forwarded_for.split(",")[-1].strip() if "," in x_forwarded_for else remote_addr
 
-        if proxy_ip in trusted_proxy_ips:
+        if remote_addr in trusted_proxy_ips:
             return client_ip
 
         return remote_addr
