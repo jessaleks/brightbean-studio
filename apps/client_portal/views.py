@@ -117,7 +117,7 @@ def portal_approval_queue(request):
 def portal_approve(request, post_id):
     """Approve a post from the client portal."""
     workspace = request.portal_workspace
-    post = get_object_or_404(Post, id=post_id, workspace=workspace)
+    post = get_object_or_404(Post.objects.prefetch_related("platform_posts"), id=post_id, workspace=workspace)
 
     children = list(post.platform_posts.all())
     if not children:
