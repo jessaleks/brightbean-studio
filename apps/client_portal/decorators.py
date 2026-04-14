@@ -1,11 +1,14 @@
 """Portal authentication decorator."""
 
 import functools
+import logging
 
 from django.shortcuts import redirect
 
 from apps.members.models import WorkspaceMembership
 from apps.workspaces.models import Workspace
+
+logger = logging.getLogger(__name__)
 
 
 def portal_auth_required(view_func):
@@ -32,17 +35,25 @@ def portal_auth_required(view_func):
         except Workspace.DoesNotExist:
             return redirect("client_portal:magic_link_expired")
 
-        # Verify user has client membership in this workspace
+        # Verify user has client role in this workspace
         membership = (
             WorkspaceMembership.objects.filter(
                 user=request.user,
                 workspace=workspace,
+                workspace_role="client",
             )
             .select_related("custom_role")
             .first()
         )
 
         if not membership:
+            logger.warning(
+                "Rejected non-client portal access attempt",
+                extra={
+                    "user_id": str(request.user.id),
+                    "workspace_id": str(workspace.id),
+                },
+            )
             return redirect("client_portal:magic_link_expired")
 
         request.portal_workspace = workspace

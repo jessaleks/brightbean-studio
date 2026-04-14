@@ -1,5 +1,6 @@
 import hashlib
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse
 from django.shortcuts import redirect
@@ -67,7 +68,18 @@ class AuthRateLimitMiddleware:
 
     @staticmethod
     def _get_client_ip(request):
+        remote_addr = request.META.get("REMOTE_ADDR", "")
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "")
+
+        if not x_forwarded_for:
+            return remote_addr
+
+        trusted_proxy_ips = getattr(settings, "TRUSTED_PROXY_IPS", None)
+        if not trusted_proxy_ips:
+            return remote_addr
+
+        if remote_addr not in trusted_proxy_ips:
+            return remote_addr
+
+        client_ip = x_forwarded_for.split(",")[0].strip()
+        return client_ip

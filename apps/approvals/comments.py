@@ -3,6 +3,7 @@
 Handles creation, updating, deletion, and @mention parsing for post comments.
 """
 
+import logging
 import re
 
 from django.db.models import Prefetch
@@ -13,6 +14,8 @@ from apps.notifications.engine import notify
 from apps.notifications.models import EventType
 
 from .models import PostComment
+
+logger = logging.getLogger(__name__)
 
 # Match @mentions but not email addresses (require whitespace or start-of-string before @)
 MENTION_REGEX = re.compile(r"(?:^|(?<=\s))@(\w[\w.]*)")
@@ -62,14 +65,24 @@ def create_comment(post, author, body, visibility, parent_id=None, attachment=No
     return comment
 
 
-def update_comment(comment_id, user, body):
-    """Update a comment's body. Only the author can edit."""
+def update_comment(comment_id, user, workspace, post, body):
+    """Update a comment's body. Only the author can edit. Must verify workspace and post scope."""
     comment = PostComment.objects.filter(
         id=comment_id,
+        post=post,
         deleted_at__isnull=True,
     ).first()
 
-    if not comment:
+    if not comment or comment.post.workspace_id != workspace.id:
+        logger.warning(
+            "Rejected comment update - comment not found in workspace/post",
+            extra={
+                "comment_id": str(comment_id),
+                "user_id": str(user.id),
+                "workspace_id": str(workspace.id),
+                "post_id": str(post.id),
+            },
+        )
         raise ValueError("Comment not found.")
     if comment.author_id != user.id:
         raise PermissionError("Only the comment author can edit.")
@@ -79,14 +92,24 @@ def update_comment(comment_id, user, body):
     return comment
 
 
-def delete_comment(comment_id, user, workspace):
-    """Soft-delete a comment. Authors and managers can delete."""
+def delete_comment(comment_id, user, workspace, post):
+    """Soft-delete a comment. Authors and managers can delete. Must verify workspace and post scope."""
     comment = PostComment.objects.filter(
         id=comment_id,
+        post=post,
         deleted_at__isnull=True,
     ).first()
 
-    if not comment:
+    if not comment or comment.post.workspace_id != workspace.id:
+        logger.warning(
+            "Rejected comment delete - comment not found in workspace/post",
+            extra={
+                "comment_id": str(comment_id),
+                "user_id": str(user.id),
+                "workspace_id": str(workspace.id),
+                "post_id": str(post.id),
+            },
+        )
         raise ValueError("Comment not found.")
 
     # Check permission: author or user with approve_posts (manager+)

@@ -117,9 +117,18 @@ def portal_approval_queue(request):
 def portal_approve(request, post_id):
     """Approve a post from the client portal."""
     workspace = request.portal_workspace
-    post = get_object_or_404(Post, id=post_id, workspace=workspace)
+    post = get_object_or_404(Post.objects.select_related("author"), id=post_id, workspace=workspace)
+
     if not post.platform_posts.filter(status="pending_client").exists():
         raise Http404
+
+    if post.platform_posts.exclude(status="pending_client").exists():
+        return HttpResponse(
+            "Cannot approve: other platform post(s) still in progress. "
+            "Only posts awaiting client approval can be approved.",
+            status=400,
+        )
+
     comment_text = request.POST.get("comment", "")
 
     try:
