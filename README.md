@@ -119,9 +119,17 @@ DATABASE_URL=postgres://postgres:postgres@postgres:5432/brightbean
 Then start everything:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 docker compose exec app python manage.py migrate
 docker compose exec app python manage.py createsuperuser
+```
+
+Because `docker-compose.yml` bind-mounts the project into `/app`, the Tailwind
+output baked into the image gets shadowed by the host directory on first start.
+Build it once inside the running container so it lands in the bind-mount:
+
+```bash
+docker compose exec app sh -c "cd theme/static_src && npm ci && npm run build"
 ```
 
 Open http://localhost:8000 - you're running.
@@ -327,20 +335,6 @@ brightbean-studio/
 ├── railway.toml               # Railway config
 └── render.yaml                # Render blueprint
 ```
-
-## Environment Variables
-
-All configuration is via environment variables. See `.env.example` for the full list.
-
-Key variables for local development:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SECRET_KEY` | (required) | Django secret key. Any random string for dev. |
-| `DEBUG` | `false` | Set to `true` for local development. |
-| `DATABASE_URL` | - | PostgreSQL connection string. |
-| `STORAGE_BACKEND` | `local` | `local` for filesystem, `s3` for S3-compatible storage. |
-| `EMAIL_BACKEND_TYPE` | `smtp` | Set to `smtp` for SMTP or leave default (console in dev). |
 
 ## Platform Credentials
 
